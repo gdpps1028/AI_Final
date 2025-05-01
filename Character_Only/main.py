@@ -58,6 +58,7 @@ def train_main():
 
         if val_acc > max_acc:
             max_acc = val_acc
+            print("Saved better model")
             torch.save(model.state_dict(), 'best_cnn_model.pth') # Save the best model
 
     logger.info(f"Best Accuracy: {max_acc:.4f}")
@@ -84,5 +85,5 @@ def test_main(count):
     test_character(model, test_loader, criterion, device, original_labels)
 
 if __name__ == '__main__':
-    train_main()
+    # train_main()
     test_main(100)

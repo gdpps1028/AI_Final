@@ -57,19 +57,20 @@ def train_main_radical():
 
         if val_acc > max_acc:
             max_acc = val_acc
+            print("Saved better model")
             torch.save(model.state_dict(), 'best_cnn_model.pth') # Save the best model
 
     logger.info(f"Best Accuracy: {max_acc:.4f}")
 
 def train_main_character():
     import os
-    subdirectories = [d for d in os.listdir('data/') if os.path.isdir(os.path.join('data/', d))]
+    subdirectories = [d for d in os.listdir('../data/') if os.path.isdir(os.path.join('../data/', d))]
     """
     load data
     """
     for i, subs in enumerate(subdirectories):
         logger.info("Start loading data")
-        images, labels = load_train_dataset('character', 'data/' + subs)
+        images, labels = load_train_dataset('character', '../data/' + subs)
         unique_labels = set(labels) 
         num_unique_labels = len(unique_labels)
         images, labels = shuffle(images, labels, random_state=777)
@@ -136,6 +137,6 @@ def test_main(count):
     test_radical(model, test_loader, criterion, device, original_labels)
 
 if __name__ == '__main__':
-    train_main_radical()
+    # train_main_radical()
     train_main_character()
-    test_main(1)
+    test_main(100)

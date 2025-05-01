@@ -66,7 +66,7 @@ def load_train_dataset(labelBy: str='radical', path: str='../data/')->Tuple[List
                 labels.append(file[0])    # labels based on character
     return images, labels
 
-def load_test_dataset(count = 100, path: str='test_data/')->List:
+def load_test_dataset(count = 100)->List:
     images = []
     import random as rd
     for root, _, files in os.walk('../data/'):

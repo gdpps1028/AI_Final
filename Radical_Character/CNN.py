@@ -73,12 +73,12 @@ def test_radical(model: CNN, test_loader: DataLoader, criterion, device, origina
                 import os
                 radical_name = original_labels[predictions[i].item()]
                 labels = []
-                for image_name in os.listdir('data/' + radical_name + '部'):
+                for image_name in os.listdir('../data/' + radical_name + '部'):
                     labels.append(image_name[0])
                 model_name = 'char_model/' + radical_name + '部.pth'
                 model_character = CNN(len(set(labels))).to(device)
                 model_character.load_state_dict(torch.load(model_name, weights_only=True))
-                guess = test_character(model_character, 'data/' + radical_name + '部', test_loader, criterion, device, images)
+                guess = test_character(model_character, '../data/' + radical_name + '部', test_loader, criterion, device, images)
                 results.append({'id': name[0], 'radical': original_labels[predictions[i].item()], 'char': guess}) # Store the original label
     df = pd.DataFrame(results)
     df.to_csv('CNN.csv', index=False)

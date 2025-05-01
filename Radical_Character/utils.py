@@ -56,9 +56,6 @@ class TestDataset(Dataset):
         return image, base_name
     
 def load_train_dataset(labelBy: str='radical', path: str='../data/')->Tuple[List, List]:
-    # (TODO) Load training dataset from the given path, return images and labels
-    # raise NotImplementedError
-    # return images, labels
     images = []
     labels = []
     for root, _, files in os.walk(path):
@@ -69,18 +66,11 @@ def load_train_dataset(labelBy: str='radical', path: str='../data/')->Tuple[List
                 if labelBy == 'character':
                     labels.append(file[0])    # labels based on character
                 else:
-                    labels.append(full_path.split('/')[1][0]) # labels based on radical
+                    labels.append(full_path.split('/')[2][0]) # labels based on radical
     return images, labels
 
 def load_test_dataset(count = 100)->List:
-    # (TODO) Load testing dataset from the given path, return images
-    # raise NotImplementedError
-    # return images
     images = []
-    # for image_name in os.listdir(path):
-    #     image_path = os.path.join(path, image_name)
-    #     images.append(image_path)
-    # return images
     import random as rd
     for root, _, files in os.walk('../data/'):
         for file in files:
