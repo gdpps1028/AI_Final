@@ -138,5 +138,5 @@ def test_main(count):
 
 if __name__ == '__main__':
     # train_main_radical()
-    train_main_character()
+    # train_main_character()
     test_main(100)
