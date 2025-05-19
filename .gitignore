@@ -1,0 +1,4 @@
+strokes_data/
+__pycache__/
+*.py[cod]
+.venv/
