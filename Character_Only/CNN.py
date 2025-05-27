@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 from typing import Tuple
 import pandas as pd
-import utils
+from Character_Only import utils
 
 class CNN(nn.Module):
     def __init__(self, num_classes):
@@ -73,6 +73,6 @@ def test_character(model: CNN, test_loader: DataLoader, criterion, device, origi
             for i, name in enumerate(image_names):
                 results.append({'id': name[0], 'char': original_labels[predictions[i].item()]})
     df = pd.DataFrame(results)
-    df.to_csv('CNN.csv', index=False)
+    df.to_csv('Character_Only/CNN.csv', index=False)
     print(f"Predictions saved to 'CNN.csv'")
     return

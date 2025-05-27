@@ -6,6 +6,10 @@ import PIL
 from typing import List, Tuple
 
 class TrainDataset(Dataset):
+
+    index_to_label = {}
+    label_to_index = {}
+
     def __init__(self, images, labels):
         self.transform = transforms.Compose([
             transforms.Grayscale(num_output_channels=3),
@@ -33,6 +37,12 @@ class TrainDataset(Dataset):
         label_tensor = torch.tensor(numerical_label, dtype=torch.long)
         return image, label_tensor
 
+def index_to_radical(dataset : TrainDataset, index):
+    return dataset.index_to_label[index]
+
+def radical_to_index(dataset : TrainDataset, radical):
+    return dataset.label_to_index[radical]
+
 class TestDataset(Dataset):
     def __init__(self, image):
         self.transform = transforms.Compose([
@@ -55,24 +65,27 @@ class TestDataset(Dataset):
         base_name = os.path.splitext(os.path.basename(image_path))[0]
         return image, base_name
     
-def load_train_dataset(labelBy: str='radical', path: str='../data/')->Tuple[List, List]:
+def load_train_dataset(labelBy: str='radical', path: str='data_new/')->Tuple[List, List]:
     images = []
     labels = []
-    for root, _, files in os.walk(path):
-        for file in files:
-            if file.lower().endswith(".png"):
-                full_path = os.path.join(root, file)
-                images.append(full_path)
-                if labelBy == 'character':
-                    labels.append(file[0])    # labels based on character
-                else:
-                    labels.append(full_path.split('/')[2][0]) # labels based on radical
+                        
+    for folder in os.listdir(path):
+        if labelBy != 'radical':
+            if folder[2] == labelBy:
+                labels.append(folder[0])  # labels based on character
+                for image in os.listdir(path+folder):
+                    images.append(image)
+        else:
+            labels.append(folder[2])      # labels based on radical
+            for image in os.listdir(path+folder):
+                    images.append(image)
+        
     return images, labels
 
 def load_test_dataset(count = 100)->List:
     images = []
     import random as rd
-    for root, _, files in os.walk('../data/'):
+    for root, _, files in os.walk('data_new/'):
         for file in files:
             if file.lower().endswith(".png"):
                 full_path = os.path.join(root, file)

@@ -55,7 +55,7 @@ class TestDataset(Dataset):
         base_name = os.path.splitext(os.path.basename(image_path))[0]
         return image, base_name
     
-def load_train_dataset(labelBy: str='radical', path: str='../data/')->Tuple[List, List]:
+def load_train_dataset(path: str='data_new')->Tuple[List, List]:
     images = []
     labels = []
     for root, _, files in os.walk(path):
@@ -69,7 +69,7 @@ def load_train_dataset(labelBy: str='radical', path: str='../data/')->Tuple[List
 def load_test_dataset(count = 100)->List:
     images = []
     import random as rd
-    for root, _, files in os.walk('../data/'):
+    for root, _, files in os.walk('data_new'):
         for file in files:
             if file.lower().endswith(".png"):
                 full_path = os.path.join(root, file)

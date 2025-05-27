@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 from typing import Tuple
 import pandas as pd
-import utils
+from Radical_Character import utils
 
 class CNN(nn.Module):
     def __init__(self, num_classes):
@@ -73,22 +73,25 @@ def test_radical(model: CNN, test_loader: DataLoader, criterion, device, origina
                 import os
                 radical_name = original_labels[predictions[i].item()]
                 labels = []
-                for image_name in os.listdir('../data/' + radical_name + '部'):
-                    labels.append(image_name[0])
-                model_name = 'char_model/' + radical_name + '部.pth'
+                correct_radical = ""
+                for count_label in os.listdir('data_new/'):
+                    if(count_label[2] == radical_name):
+                        labels.append(count_label[0])
+                    if(count_label[0] == name[0]):
+                        correct_radical = count_label[2]
+                model_name = 'Radical_Character/char_model/' + radical_name + '.pth'
                 model_character = CNN(len(set(labels))).to(device)
                 model_character.load_state_dict(torch.load(model_name, weights_only=True))
-                guess = test_character(model_character, '../data/' + radical_name + '部', test_loader, criterion, device, images)
-                results.append({'id': name[0], 'radical': original_labels[predictions[i].item()], 'char': guess}) # Store the original label
+                guess = test_character(model_character, radical_name, test_loader, criterion, device, images)
+                results.append({'id1': correct_radical, 'id2': image_names[i][0], 'radical': original_labels[predictions[i].item()], 'char': guess}) # Store the original label
     df = pd.DataFrame(results)
-    df.to_csv('CNN.csv', index=False)
+    df.to_csv('Radical_Character/CNN.csv', index=False)
     print(f"Predictions saved to 'CNN.csv'")
     return
 
-def test_character(model: CNN, path, test_loader: DataLoader, criterion, device, image):
+def test_character(model: CNN, radical_name: str, test_loader: DataLoader, criterion, device, image):
     model.eval()
-    from utils import TrainDataset, load_train_dataset
-    dataset = TrainDataset(load_train_dataset('character', path)[0], load_train_dataset('character', path)[1])
+    dataset = utils.TrainDataset(utils.load_train_dataset(radical_name)[0], utils.load_train_dataset(radical_name)[1])
     original_labels = dataset.index_to_label
     with torch.no_grad():
         outputs = model(image)
