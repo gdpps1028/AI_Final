@@ -75,10 +75,10 @@ def test_radical(model: CNN, test_loader: DataLoader, criterion, device, origina
                 labels = []
                 correct_radical = ""
                 for count_label in os.listdir('data_new/'):
-                    if(count_label[2] == radical_name):
+                    if(count_label.split("_")[1] == radical_name):
                         labels.append(count_label[0])
                     if(count_label[0] == name[0]):
-                        correct_radical = count_label[2]
+                        correct_radical = count_label.split("_")[1]
                 model_name = 'Radical_Character/char_model/' + radical_name + '.pth'
                 model_character = CNN(len(set(labels))).to(device)
                 model_character.load_state_dict(torch.load(model_name, weights_only=True))

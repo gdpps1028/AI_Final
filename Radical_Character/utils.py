@@ -71,14 +71,14 @@ def load_train_dataset(labelBy: str='radical', path: str='data_new/')->Tuple[Lis
                         
     for folder in os.listdir(path):
         if labelBy != 'radical':
-            if folder[2] == labelBy:
-                labels.append(folder[0])  # labels based on character
+            if folder.split("_")[1] == labelBy:
                 for image in os.listdir(path+folder):
-                    images.append(image)
+                    images.append(path+folder+"/"+image)
+                    labels.append(folder[0])  # labels based on character
         else:
-            labels.append(folder[2])      # labels based on radical
             for image in os.listdir(path+folder):
-                    images.append(image)
+                images.append(path+folder+"/"+image)
+                labels.append(folder.split("_")[1])      # labels based on radical
         
     return images, labels
 

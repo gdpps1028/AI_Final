@@ -1,6 +1,7 @@
 import argparse
 from Character_Only import ch_main
 from Radical_Character import rd_main
+from Stroke_Character import st_main
 
 parser = argparse.ArgumentParser(description="A sample script using argparse")
 
@@ -19,4 +20,5 @@ if __name__ == "__main__":
         ch_main.main(args.Train, args.Eval)
     elif args.Model == 'R':
         rd_main.main(args.Train, args.Eval) 
-    # elif args.Model == 'S':
+    elif args.Model == 'S':
+        st_main.main(args.Train, args.Eval) 
