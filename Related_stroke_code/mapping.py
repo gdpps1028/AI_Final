@@ -26,11 +26,11 @@ for name in os.listdir(directory):
         print(f"[跳過] 已存在：{new_name}")
         continue
 
-    # ✅ 正式更名資料夾
+    # 重新更名資料夾
     os.rename(full_path, new_path)
     print(f"重新命名：{name} → {new_name}")
 
-# 顯示錯誤記錄
+# 顯示錯誤記錄 正常來說是空的
 print(f"\n共 {len(wrong_record)} 個字找不到筆劃：")
 for s in wrong_record:
     print(s, end=' ')

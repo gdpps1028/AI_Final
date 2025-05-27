@@ -15,3 +15,16 @@ Arguments
 '-t', '--Train' // Add this flag if you want to retrain the model
 '-e', '--Eval'  // Test the model, input an interger for amount of testcases, default to 100
 ```
+
+# Another stroke_based model
+```
+cd Related_stroke_code
+```
+Run the file
+```
+python train.py
+```
+Bonus (可以把epoch的每次loss 和 Acc自動做成圖表 於網站上呈現)
+```
+tensorboard --logdir=runs
+```
