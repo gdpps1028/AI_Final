@@ -24,7 +24,27 @@
             }
             #controls {
                 margin-top: 10px;
+                display: flex; /* Use flexbox for buttons */
+                gap: 10px; /* Space between buttons */
             }
+            #controls button {
+                padding: 8px 15px;
+                font-size: 16px;
+                cursor: pointer;
+                border: 1px solid #ccc;
+                border-radius: 5px;
+                background-color: #f0f0f0;
+                transition: background-color 0.2s;
+            }
+            #controls button:hover {
+                background-color: #e0e0e0;
+            }
+            #controls button.active { /* Style for active button */
+                background-color: #007bff;
+                color: white;
+                border-color: #007bff;
+            }
+
             #results {
                 margin-left: 20px;
                 padding: 15px;
@@ -64,8 +84,9 @@
             <h2>手寫中文字辨識</h2>
             <canvas id="draw" width="280" height="280"></canvas>
             <div id="controls">
+                <button id="draw-mode" class="active">繪圖</button>
+                <button id="eraser-mode">橡皮擦</button>
                 <button id="clear">清除</button>
-                <button id="predict">送出辨識</button>
             </div>
         </div>
 
@@ -81,28 +102,136 @@
             const canvas = document.getElementById('draw');
             const ctx = canvas.getContext('2d');
             let drawing = false;
+            let predictionTimerId = null; // To store the debounce timer
+            const PREDICTION_DELAY_MS = 800; // Delay in milliseconds after last stroke to trigger prediction
+
+            let currentMode = 'draw'; // 'draw' or 'erase'
 
             // Get result display elements
             const topPredictionElement = document.getElementById('top-prediction');
             const confidenceListElement = document.getElementById('confidence-list');
             const errorDisplayElement = document.getElementById('error-display');
 
+            // Get mode buttons
+            const drawModeButton = document.getElementById('draw-mode');
+            const eraserModeButton = document.getElementById('eraser-mode');
+            const clearButton = document.getElementById('clear'); // Also get the clear button for active styling
+
+            // Function to update canvas drawing properties based on mode
+            function updateDrawingMode() {
+                // Remove active class from all mode buttons first
+                drawModeButton.classList.remove('active');
+                eraserModeButton.classList.remove('active');
+
+                if (currentMode === 'draw') {
+                    ctx.strokeStyle = 'black'; // 繪圖顏色為黑色
+                    ctx.globalCompositeOperation = 'source-over'; // 預設的繪圖模式：新畫的覆蓋舊的
+                    drawModeButton.classList.add('active'); // 將繪圖按鈕設為激活狀態
+                    ctx.lineWidth = 10; // Stroke thickness
+                } else if (currentMode === 'erase') {
+                    // 橡皮擦模式的關鍵：雖然筆觸顏色是白色，但因為 globalCompositeOperation，
+                    // 它會將畫布上現有內容中與白色筆觸重疊的部分變透明。
+                    // 由於畫布背景是不透明的白色，這就實現了擦除效果。
+                    ctx.strokeStyle = 'white'; // 橡皮擦「畫出」白色筆觸（這個筆觸用於與現有內容進行透明化操作）
+                    // ctx.globalCompositeOperation = 'destination-out'; // 核心：將畫布上現有像素中與新筆觸重疊的部分變透明
+                    ctx.globalCompositeOperation = 'source-over';
+                    eraserModeButton.classList.add('active'); // 將橡皮擦按鈕設為激活狀態
+                    ctx.lineWidth = 25; // Stroke thickness
+                }
+            }
+
             // init
             ctx.fillStyle = 'white';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.strokeStyle = 'black';
-            ctx.lineWidth = 10; // Stroke thickness
+            // ctx.lineWidth = 10; // Stroke thickness
             ctx.lineCap = 'round';
+            updateDrawingMode(); // Set initial drawing mode (draw)
+
+            // Helper function to check if the canvas is empty (all white pixels)
+            function isCanvasEmpty() {
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
+                for (let i = 0; i < data.length; i += 4) {
+                    const r = data[i];
+                    const g = data[i + 1];
+                    const b = data[i + 2];
+                    if (r < 250 || g < 250 || b < 250) { // Check for non-white pixels
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            // Function to handle prediction logic
+            async function triggerPrediction() {
+                // IMPORTANT: Check if canvas is empty before proceeding with prediction
+                if (isCanvasEmpty()) {
+                    topPredictionElement.textContent = '請繪製文字'; // Reset results display
+                    confidenceListElement.innerHTML = '';
+                    errorDisplayElement.textContent = '';
+                    return; // Stop here, no prediction needed for an empty canvas
+                }
+
+                const imgData = canvas.toDataURL('image/png');
+                // Clear previous results and errors
+                topPredictionElement.textContent = '辨識中...';
+                confidenceListElement.innerHTML = '';
+                errorDisplayElement.textContent = '';
+
+                try {
+                    const res = await fetch('/predict', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({image: imgData})
+                    });
+
+                    if (!res.ok) {
+                        const errorData = await res.json();
+                        throw new Error(errorData.error || 'Server error occurred');
+                    }
+
+                    const predictions = await res.json();
+
+                    if (predictions.length > 0) {
+                        const topPrediction = predictions[0];
+                        topPredictionElement.textContent = `最高預測: ${topPrediction.label}`;
+
+                        confidenceListElement.innerHTML = '';
+                        predictions.forEach(p => {
+                            const item = document.createElement('div');
+                            item.className = 'prediction-item';
+                            item.innerHTML = `<span class="prediction-label">${p.label}</span> <span class="prediction-confidence">${(p.confidence * 100).toFixed(2)}%</span>`;
+                            confidenceListElement.appendChild(item);
+                        });
+                    } else {
+                        topPredictionElement.textContent = '無預測結果';
+                    }
+
+                } catch (err) {
+                    console.error('辨識失敗:', err);
+                    errorDisplayElement.textContent = `辨識失敗: ${err.message || '未知錯誤'}`;
+                    topPredictionElement.textContent = '請繪製文字'; // Reset text
+                }
+            }
+
 
             // start drawing
             function start(event) {
                 drawing = true;
                 ctx.beginPath();
                 move(event);
+                // Clear any pending prediction timer if drawing resumes
+                clearTimeout(predictionTimerId);
             }
+
             function end() {
                 drawing = false;
+                // Clear any pending prediction timer
+                clearTimeout(predictionTimerId);
+                // ALWAYS start prediction timer after a stroke (draw or erase)
+                predictionTimerId = setTimeout(triggerPrediction, PREDICTION_DELAY_MS);
             }
+
             function move(event) {
                 if (!drawing) return;
                 const rect = canvas.getBoundingClientRect();
@@ -120,7 +249,7 @@
                 ctx.moveTo(x, y);
             }
 
-            // add event listeners
+            // add event listeners for drawing/erasing
             canvas.addEventListener('mousedown', start);
             canvas.addEventListener('touchstart', start);
             canvas.addEventListener('mousemove', move);
@@ -129,63 +258,31 @@
             canvas.addEventListener('mouseleave', end);
             canvas.addEventListener('touchend', end);
 
-            // clear
-            document.getElementById('clear').addEventListener('click', () => {
+            // Button Event Listeners
+            drawModeButton.addEventListener('click', () => {
+                currentMode = 'draw';
+                updateDrawingMode();
+            });
+
+            eraserModeButton.addEventListener('click', () => {
+                currentMode = 'erase';
+                updateDrawingMode();
+            });
+
+            clearButton.addEventListener('click', () => {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 ctx.fillStyle = 'white';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
-                // Clear previous results
+                // Clear previous results and reset the display to default message
                 topPredictionElement.textContent = '請繪製文字';
                 confidenceListElement.innerHTML = '';
                 errorDisplayElement.textContent = '';
+                clearTimeout(predictionTimerId); // Also clear any pending prediction on clear
+                // After clearing, automatically switch back to draw mode
+                currentMode = 'draw';
+                updateDrawingMode();
             });
 
-            // predict
-            document.getElementById('predict').addEventListener('click', async () => {
-                const imgData = canvas.toDataURL('image/png');
-                // Clear previous results and errors
-                topPredictionElement.textContent = '辨識中...';
-                confidenceListElement.innerHTML = '';
-                errorDisplayElement.textContent = '';
-
-                try {
-                    const res = await fetch('/predict', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({image: imgData})
-                    });
-
-                    if (!res.ok) { // Check if the response status is not OK (e.g., 400, 500)
-                        const errorData = await res.json();
-                        throw new Error(errorData.error || 'Server error occurred');
-                    }
-
-                    // Assuming the backend now returns an array of predictions with labels and confidences
-                    // e.g., [{label: '字', confidence: 0.95}, {label: '子', confidence: 0.03}, ...]
-                    const predictions = await res.json();
-
-                    if (predictions.length > 0) {
-                        const topPrediction = predictions[0];
-                        topPredictionElement.textContent = `最高預測: ${topPrediction.label}`;
-
-                        // Display all predictions and confidences
-                        confidenceListElement.innerHTML = ''; // Clear previous list
-                        predictions.forEach(p => {
-                            const item = document.createElement('div');
-                            item.className = 'prediction-item';
-                            item.innerHTML = `<span class="prediction-label">${p.label}</span> <span class="prediction-confidence">${(p.confidence * 100).toFixed(2)}%</span>`;
-                            confidenceListElement.appendChild(item);
-                        });
-                    } else {
-                        topPredictionElement.textContent = '無預測結果';
-                    }
-
-                } catch (err) {
-                    console.error('辨識失敗:', err);
-                    errorDisplayElement.textContent = `辨識失敗: ${err.message || '未知錯誤'}`;
-                    topPredictionElement.textContent = '請繪製文字'; // Reset text
-                }
-            });
         </script>
     </body>
 </html>
