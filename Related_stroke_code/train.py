@@ -6,12 +6,12 @@ from torchvision import transforms
 from dataset import StrokeCharDataset
 from model import StrokeCNN
 from torch.utils.tensorboard import SummaryWriter
-from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 
 ## global par
 I_want_to_test_how_many_word = 4803
-Batch_size = 8
+Batch_size = 16
+epoch_times = 10
 
 def set_seed(seed=42):
     random.seed(seed)
@@ -40,33 +40,46 @@ def load_dataset(data_root, items = 4803):
 def main():
     set_seed()
     data_root = "../data_new"
-    all_samples, label_map = load_dataset(data_root, items = I_want_to_test_how_many_word)
-    print(f"使用{len(label_map)}個類別. 共{len(all_samples)}張圖片")
-    # exit()
-    train_samples, val_samples = train_test_split(all_samples, test_size=0.2, random_state=42, stratify=[s[1] for s in all_samples])
+    all_samples, label_map = load_dataset(data_root, items=I_want_to_test_how_many_word)
+    print(f"使用 {len(label_map)} 個類別，共 {len(all_samples)} 張圖片")
+    
+    # 80/10/10 切分
+    random.shuffle(all_samples)
+    n = len(all_samples)
+    n_train = int(n * 0.8)
+    n_val   = int(n * 0.1)
+    train_samples = all_samples[:n_train]
+    val_samples   = all_samples[n_train:n_train + n_val]
+    test_samples  = all_samples[n_train + n_val:]
+
+    print(f"train={len(train_samples)}, val={len(val_samples)}, test={len(test_samples)}")
+
     transform = transforms.Compose([
         transforms.Resize((64, 64)),
-        transforms.Compose([
-            transforms.Resize((64, 64)),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.5], std=[0.5])
-        ])
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.5], std=[0.5])
     ])
-    train_dataset = StrokeCharDataset(train_samples, transform=transform, train=True)
-    val_dataset = StrokeCharDataset(val_samples, transform=transform, train=False)
-    train_loader = DataLoader(train_dataset, batch_size=Batch_size, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=Batch_size, shuffle=False)
 
+    train_dataset = StrokeCharDataset(train_samples, transform=transform, train=True)
+    val_dataset   = StrokeCharDataset(val_samples,   transform=transform, train=False)
+    test_dataset  = StrokeCharDataset(test_samples,  transform=transform, train=False)
+
+    train_loader = DataLoader(train_dataset, batch_size=Batch_size, shuffle=True,  num_workers=0)
+    val_loader   = DataLoader(val_dataset,   batch_size=Batch_size, shuffle=False, num_workers=0)
+    test_loader  = DataLoader(test_dataset,  batch_size=Batch_size, shuffle=False, num_workers=0)
+    
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"使用裝置:{device}")
+    print(f"使用裝置: {device}")
     model = StrokeCNN(num_classes=len(label_map)).to(device)
     loss_fn = torch.nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     writer = SummaryWriter("runs/stroke_cnn")
 
     best_val_acc = 0
+    best_model_path = "best_model.pt"
 
-    for epoch in range(10):
+    # 訓練 + 驗證
+    for epoch in range(epoch_times):
         model.train()
         total_loss = 0
         for x, y in tqdm(train_loader, desc=f"Epoch {epoch+1}"):
@@ -82,7 +95,7 @@ def main():
         model.eval()
         correct = total = 0
         with torch.no_grad():
-            for x, y in tqdm(val_loader, desc=f"Validating"):
+            for x, y in tqdm(val_loader, desc="Validating"):
                 x, y = x.to(device), y.to(device)
                 preds = model(x).argmax(dim=1)
                 correct += (preds == y).sum().item()
@@ -93,9 +106,24 @@ def main():
         writer.add_scalar("Accuracy/val", val_acc, epoch)
         print(f"[Epoch {epoch+1}] Loss: {total_loss:.4f} | Val Acc: {val_acc:.4f}")
 
+        # 保存最佳模型
         if val_acc > best_val_acc:
             best_val_acc = val_acc
-            torch.save(model.state_dict(), "best_model.pt")
+            torch.save(model.state_dict(), best_model_path)
+
+    # 訓練結束後，載入最佳模型，對 Test 集做評估
+    print(f"\n>>> 載入最佳模型 ({best_model_path})，在 Test 集上評估")
+    model.load_state_dict(torch.load(best_model_path))
+    model.eval()
+    correct = total = 0
+    with torch.no_grad():
+        for x, y in tqdm(test_loader, desc="Testing"):
+            x, y = x.to(device), y.to(device)
+            preds = model(x).argmax(dim=1)
+            correct += (preds == y).sum().item()
+            total += y.size(0)
+    test_acc = correct / total
+    print(f"Test Accuracy: {test_acc:.4f}")
 
 if __name__ == '__main__':
     print("in main()")

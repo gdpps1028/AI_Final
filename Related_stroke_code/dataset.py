@@ -5,7 +5,6 @@ from PIL import Image
 import cv2
 import numpy as np
 from torchvision import transforms
-import random
 
 def erase_random_patch(img, size_range=(10, 25)):
     img = np.array(img)
