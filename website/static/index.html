@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>手寫中文字辨識</title>
+    <style>
+        body { font-family: sans-serif; display: flex; justify-content: center; padding: 40px; background-color: #1e1e1e; color: white; }
+        #container { display: flex; gap: 40px; }
+        #left { text-align: center; }
+        canvas { background: white; border: 1px solid black; }
+        button { margin: 5px; padding: 8px 16px; cursor: pointer; }
+        #result-box { background: #2c2c2c; padding: 20px; border-radius: 10px; width: 250px; }
+        .char-pred { color: #6ef2dc; font-size: 18px; }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="left">
+            <h2>手寫中文字辨識</h2>
+            <canvas id="draw" width="280" height="280"></canvas><br>
+            <button onclick="mode='draw'">繪圖</button>
+            <button onclick="mode='erase'">橡皮擦</button>
+            <button onclick="clearCanvas()">清除</button><br>
+            <label for="modelSelect">選擇模型:</label>
+            <select id="modelSelect">
+                <option value="baseline">Baseline CNN</option>
+                <option value="baseline-plus">Baseline CNN_plus</option>
+                <option value="Mulit-task">Mulit-Model</option>
+                <option value="se">SE-Model</option>
+                <option value="Mulit-task-plus">Mulit_v2-Model</option>
+                <option value="yolo">Yolo-Model</option>
+            </select>
+            <button onclick="predict()">辨識</button>
+        </div>
+        <div id="result-box">
+            <h3>辨識結果</h3>
+            <div id="top-result">最高預測: -</div>
+            <ul id="result-list"></ul>
+        </div>
+        <div id ="stroke-info" style = "display: none;"></div>
+        <div id ="radical-info" style = "display: none;"></div>
+    </div>
+    <script>
+        const canvas = document.getElementById('draw');
+        const ctx = canvas.getContext('2d');
+        ctx.lineWidth = 5;
+        ctx.lineCap = 'round';
+        let drawing = false;
+        let mode = 'draw';
+
+        canvas.addEventListener('mousedown', (e) => {
+            drawing = true;
+            ctx.beginPath();
+            ctx.moveTo(e.offsetX, e.offsetY);
+        });
+        canvas.addEventListener('mousemove', (e) => {
+            if (drawing) {
+                ctx.strokeStyle = mode === 'draw' ? 'black' : 'white';
+                ctx.lineTo(e.offsetX, e.offsetY);
+                ctx.stroke();
+            }
+        });
+        canvas.addEventListener('mouseup', () => drawing = false);
+        canvas.addEventListener('mouseleave', () => drawing = false);
+
+        function clearCanvas() {
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        clearCanvas();
+
+        async function predict() {
+            const imgData = canvas.toDataURL('image/png');
+            const model = document.getElementById("modelSelect").value;
+            const res = await fetch(`/predict?model=${model}`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({image: imgData})
+            });
+            const result = await res.json();
+            document.getElementById('top-result').innerText = '最高預測: ' + result.top;
+            const list = document.getElementById('result-list');
+            list.innerHTML = '';
+            result.all.forEach(([char, conf]) => {
+                const li = document.createElement('li');
+                li.className = 'char-pred';
+                li.innerText = `${char} - ${(conf * 100).toFixed(2)}%`;
+                list.appendChild(li);
+            });
+
+            // if ('pred_stroke' in result && result.pred_stroke !== null) {
+            //     const strokeInfo = document.getElementById('stroke-info');
+            //     strokeInfo.style.display = 'block';
+            //     strokeInfo.innerText = '筆劃數預測：' + result.pred_stroke;
+            // } else {
+            //     document.getElementById('stroke-info').style.display = 'none';
+            // }
+            // if ('pred_radical' in result && result.pred_radical !== null) {
+            //     const radicalInfo = document.getElementById('radical-info');
+            //     radicalInfo.style.display = 'block';
+            //     radicalInfo.innerText = '部首編號預測：' + result.pred_radical;
+            // } else {
+            //     document.getElementById('radical-info').style.display = 'none';
+            // }
+        }
+    </script>
+</body>
+</html>

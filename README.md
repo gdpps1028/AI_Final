@@ -39,3 +39,8 @@ Run the code
 python server.py
 http://127.0.0.1:5000
 ```
+# Run Baseline CNN
+```
+cd AI_Final
+python -m modifided_baseline.ch_main
+```
