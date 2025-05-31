@@ -29,9 +29,9 @@ Bonus (可以把epoch的每次loss 和 Acc自動做成圖表 於網站上呈現)
 tensorboard --logdir=runs
 ```
 
-# 測試版網頁執行
+# 網頁執行
 ```
-cd Related_stroke_code
+cd website
 ```
 
 Run the code
