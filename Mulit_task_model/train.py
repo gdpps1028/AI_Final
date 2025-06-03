@@ -11,9 +11,9 @@ from tqdm import tqdm
 import torch.nn as nn
 
 ## global par
-I_want_to_test_how_many_word = 1000
+I_want_to_test_how_many_word = 4803
 Batch_size = 32
-epoch_times = 1
+epoch_times = 10
 FileTag = 1
 # gloabl
 seed = 777
@@ -140,24 +140,36 @@ def main():
 
         model.eval()
         correct = total = 0
-        for images, label_char, _, _ in tqdm(val_loader, desc="Validating"):
-            images = images.to(device)
-            c = label_char.to(device)
+        val_loss = 0  # <--- 新增：紀錄驗證損失
+        with torch.no_grad():
+            for images, label_char, label_stroke, label_radical in tqdm(val_loader, desc="Validating"):
+                images = images.to(device)
+                c = label_char.to(device)
+                s = label_stroke.to(device).float()
+                r = label_radical.to(device)
 
-            # 前向得到三支输出，取第一个 logits_c
-            logits_c, _, _ = model(images)
+                logits_c, pred_s, logits_r = model(images)
 
-            # 只用 logits_c 来预测主任务
-            preds = logits_c.argmax(dim=1)
+                # 預測正確率（維持原本）
+                preds = logits_c.argmax(dim=1)
+                correct += (preds == c).sum().item()
+                total += c.size(0)
 
-            # 累计正确数与总数
-            correct += (preds == c).sum().item()
-            total += c.size(0)
+                # 🔽 新增：驗證集的 loss（與訓練 loss 計算邏輯相同）
+                l_main = loss_char(logits_c, c)
+                l_str  = loss_stroke(pred_s, s)
+                l_rad  = loss_rad(logits_r, r)
+                loss   = l_main + a * l_str + b * l_rad
+                val_loss += loss.item()
         val_acc = correct / total
-
+        avg_val_loss = val_loss / len(val_loader)  # <--- 每 batch 的平均驗證損失
         writer.add_scalar("Loss/train", total_loss, epoch)
+        writer.add_scalar("Loss/val",   avg_val_loss, epoch)  # <--- 新增：val loss 曲線
         writer.add_scalar("Accuracy/val", val_acc, epoch)
-        print(f"[Epoch {epoch+1}] Loss: {total_loss:.4f} | Val Acc: {val_acc:.4f}")
+        writer.add_scalar("Loss_Component/val_char", l_main.item(), epoch)
+        writer.add_scalar("Loss_Component/val_stroke", l_str.item(), epoch)
+        writer.add_scalar("Loss_Component/val_radical", l_rad.item(), epoch)
+        print(f"[Epoch {epoch+1}] Loss: {total_loss:.4f} | Val Loss: {avg_val_loss:.4f} | Val Acc: {val_acc:.4f}")
 
         # 保存最佳模型
         if val_acc > best_val_acc:

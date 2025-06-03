@@ -38,3 +38,14 @@ class MultiTaskCNN(nn.Module):
         out_radical = self.fc_radical(x)    # 部首 logits
 
         return out_char, out_stroke.squeeze(1), out_radical
+    
+    ## used for 分析
+    def _forward_features(self, x):
+        x = self.pool1(self.dropout1(self.relu1(self.bn1(self.conv1(x)))))
+        x = self.pool2(self.dropout2(self.relu2(self.bn2(self.conv2(x)))))
+        x = x.view(x.size(0), -1)
+        return x
+
+    def extract_features(self, x):
+        """提取 CNN encoder 的 flatten 特徵向量"""
+        return self._forward_features(x)

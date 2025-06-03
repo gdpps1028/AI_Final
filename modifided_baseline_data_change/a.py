@@ -9,8 +9,12 @@ from sklearn.model_selection import train_test_split
 from loguru import logger
 from . import CNN, utils
 from torchvision import transforms
-
-
+from collections import Counter
+import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.rcParams['font.family'] = 'Microsoft JhengHei'  # 設定中文字體
+matplotlib.rcParams['axes.unicode_minus'] = False          # 正常顯示負號
+TOP_N = 20
 if __name__ == '__main__':
     # 1. 載入資料並切割
     images, labels = utils.load_train_dataset()
@@ -63,4 +67,23 @@ if __name__ == '__main__':
     corrects = df['correct'].sum()
     acc = corrects / total
     print(f"Test size={total}, correct={corrects}, accuracy={acc:.4%}")
-    exit()
+
+    df_wrong = df[df['correct'] == False]
+    # 統計每個 (真實字, 預測字) 的錯誤組合
+    error_pairs = list(zip(df_wrong['true'], df_wrong['char']))
+    pair_counts = Counter(error_pairs)
+
+    # 取出前 TOP_N 常見錯誤
+    most_common = pair_counts.most_common(TOP_N)
+    pairs = [f"{true}→{pred}" for (true, pred), _ in most_common]
+    counts = [count for _, count in most_common]
+
+    # 繪製長條圖
+    plt.figure(figsize=(12, 6))
+    plt.bar(pairs, counts)
+    plt.xticks(rotation=45, ha='right')
+    plt.xlabel("True → Predicted")
+    plt.ylabel("Count")
+    plt.title(f"Top {TOP_N} Most Common Misclassifications")
+    plt.tight_layout()
+    plt.show()
