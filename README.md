@@ -1,5 +1,12 @@
-# AI_Final
+# AI_Final - overview
+Do the kinds of model to test the accaruacy of classify 4803 chinese word
 
+## Requirements
+Python 3.10.x
+--index-url https://download.pytorch.org/whl/cu121
+torch
+torchvision
+torchaudio
 ## How to run 
 Change the directory
 ```
